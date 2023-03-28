@@ -15,20 +15,21 @@ function App() {
       setisLoading(true);
       setError(null);
       try {
-        const response = await fetch('https://swapi.dev/api/films/');
+        const response = await fetch('https://react-http-83ec6-default-rtdb.firebaseio.com/movies.json');
         if (!response.ok) {
           throw new Error('Something went wrong...Retrying');
         }
         const data = await response.json();
-        const transformedMovie = data.results.map((movieData) => {
-          return {
-            id: movieData.episode_id,
-            title: movieData.title,
-            openingText: movieData.opening_crawl,
-            releaseDate: movieData.release_date,
-          };
-        });
-        setMovies(transformedMovie);
+        const loadMovies = [];
+        for(const key in data){
+          loadMovies.push({
+            id:key,
+            title:data[key].title,
+            openingText: data[key].openingText,
+            releaseDate:data[key].releaseDate
+          });
+        }
+        setMovies(loadMovies);
         setRetrying(false);
       } catch (err) {
         setError(err.message);
@@ -49,10 +50,37 @@ function App() {
     return () => clearInterval(retryInterval);
   }, [retrying, retryCount, fetchMovieHandler]);
 
+  const movieHandler = async (movie) => {
+    const response = await fetch('https://react-http-83ec6-default-rtdb.firebaseio.com/movies.json', {
+      method: 'POST',
+      body: JSON.stringify(movie),
+      headers: {
+        'Content-Type':'Application/json'
+      }
+    });
+    const data = await response.json();
+    console.log(data);
+  }
+
+  const deleteHandler = async (id) => {
+    try {
+        const response = await fetch(`https://react-http-83ec6-default-rtdb.firebaseio.com/movies.json/${id}`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message);
+        }
+    } catch (error) {
+        console.error(error);
+    }
+};
+
+
   let content = <p>Found no movies.</p>;
 
   if (movies.length > 0) {
-    content = <MoviesList movies={movies} />;
+    content = <MoviesList movies={movies} onDelete={deleteHandler}/>;
   }
 
   if (error) {
@@ -65,10 +93,6 @@ function App() {
   }
   if (isLoading) {
     content = <p>Loading...</p>;
-  }
-
-  const movieHandler = (movie) => {
-    console.log(movie);
   }
 
   return (
